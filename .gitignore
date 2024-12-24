@@ -1,0 +1,4 @@
+.venv/
+image-test.py
+ISTD_Dataset/
+shadow_detection_model.pkl
