@@ -80,102 +80,101 @@ def train_model():
 
     return clf
 
-def train_shadow_removal_model():
-    # Dataset paths
-    shadow_images = glob('ISTD_Dataset/train/train_A/*')
-    shadow_masks = glob('ISTD_Dataset/train/train_B/*')
-    shadow_free_images = glob('ISTD_Dataset/train/train_C/*')
 
-    def load_shadow_removal_data(shadow_images, shadow_masks, shadow_free_images, target_size=(x_dim, y_dim), max_images=max_images_value):
-        X, Y = [], []
-
-        shadow_images = shadow_images[:max_images]
-        shadow_masks = shadow_masks[:max_images]
-        shadow_free_images = shadow_free_images[:max_images]
-
-        for img_path, mask_path, free_path in zip(shadow_images, shadow_masks, shadow_free_images):
-            img = cv2.imread(img_path)
-            mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-            shadow_free = cv2.imread(free_path)
-
-            img = resize_image(img, target_size)
-            mask = resize_image(mask, target_size)
-            shadow_free = resize_image(shadow_free, target_size)
-
-            # Extract RGB features for shadowed regions only
-            for i in range(target_size[0]):
-                for j in range(target_size[1]):
-                    if mask[i, j] > 0:  # Shadow region
-                        pixel_features = img[i, j, :]  # Only RGB values
-                        X.append(pixel_features)  # Features for the shadowed pixel
-                        Y.append(shadow_free[i, j, :])  # Corresponding shadow-free RGB value
-
-        X = np.array(X)
-        Y = np.array(Y)
-        return X, Y
-
-    X, Y = load_shadow_removal_data(shadow_images, shadow_masks, shadow_free_images)
-
-    # Train a regression model to predict shadow-free pixel values
-    from sklearn.ensemble import RandomForestRegressor
-    regressor = RandomForestRegressor(n_estimators=50, random_state=42)
-    regressor.fit(X, Y)
-
-    print("Shadow removal model trained.")
-    return regressor
-
-def remove_shadows(image_path, shadow_model, target_size=(x_dim, y_dim)):
+def remove_shadow(image_path, thresholded_mask_resized):
+    dilation_size=4
     original_img = cv2.imread(image_path)
-    img_resized = resize_image(original_img, target_size)
 
-    # Prepare a new image for the shadow-free output
-    shadow_free_img = img_resized.copy()
+    corrected_img = original_img.copy()
+    # Get the dimensions of corrected_img
+    height, width, channels = corrected_img.shape
 
-    # Iterate through each pixel and predict the shadow-free RGB values
-    for i in range(target_size[0]):
-        for j in range(target_size[1]):
-            # Extract only the RGB features (3 values per pixel)
-            pixel_features = img_resized[i, j, :]  # This is a 1D array of length 3 (RGB)
-            
-            # Ensure that you're passing the features as a 2D array with shape (1, 3)
-            predicted_pixel = shadow_model.predict([pixel_features])[0]  # Predict for the single pixel
-            
-            # Assign the predicted shadow-free pixel value to the output image
-            shadow_free_img[i, j, :] = predicted_pixel
+    # Print the dimensions
+    print(f"Height: {height}, Width: {width}, Channels: {channels}")
 
-    # Resize the shadow-free image to the original size of the input image
-    shadow_free_img_resized = cv2.resize(shadow_free_img, (original_img.shape[1], original_img.shape[0]))
-
-    # Save the shadow-free image
-    cv2.imwrite("shadow_removed_image.jpg", shadow_free_img_resized)
-
-    return shadow_free_img_resized
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilation_size, dilation_size))
+    expanded_mask = cv2.dilate(thresholded_mask_resized, kernel, iterations=1)
 
 
+    shadow_pixels_r = original_img[expanded_mask[..., 0] == 0, 0]
+    shadow_pixels_g = original_img[expanded_mask[..., 0] == 0, 1]
+    shadow_pixels_b = original_img[expanded_mask[..., 0] == 0, 2]
 
-def remove_shadow():
-    global shadow_removal_model
+    mean_shadow_intensity_r = np.mean(shadow_pixels_r) / 255.0 if len(shadow_pixels_r) > 0 else 0.5
+    mean_shadow_intensity_g = np.mean(shadow_pixels_g) / 255.0 if len(shadow_pixels_g) > 0 else 0.5
+    mean_shadow_intensity_b = np.mean(shadow_pixels_b) / 255.0 if len(shadow_pixels_b) > 0 else 0.5
+
+    # Dynamic gamma adjustment based on shadow brightness for each channel
+    gamma_r = 0.2 + (1.0 - mean_shadow_intensity_r) * 0.8
+    gamma_g = 0.1 + (1.0 - mean_shadow_intensity_g) * 0.9
+    gamma_b = 0.1 + (1.0 - mean_shadow_intensity_b) * 0.9
+
+    print(f"Gamma R: {gamma_r}, Gamma G: {gamma_g}, Gamma B: {gamma_b}")
+
+    # Apply gamma correction separately for each channel
+    for i in range(width):
+        for j in range(height):
+            if expanded_mask[j, i, 0] == 0: 
+                corrected_img[j, i, 0] = 255
+                corrected_img[j, i, 1] = 255
+                corrected_img[j, i, 2] = 255
+            else:
+                corrected_img[j, i, 0] = np.power((corrected_img[j, i, 0] / 255), gamma_r) * 255
+                corrected_img[j, i, 1] = np.power((corrected_img[j, i, 1] / 255), gamma_g) * 255
+                corrected_img[j, i, 2] = np.power((corrected_img[j, i, 2] / 255), gamma_b) * 255
+
+    # Restore background pixels as they are
+    for i in range(width):
+        for j in range(height):
+            if expanded_mask[j, i, 0] == 0: 
+                corrected_img[j, i, 0] = original_img[j, i, 0]
+                corrected_img[j, i, 1] = original_img[j, i, 1]
+                corrected_img[j, i, 2] = original_img[j, i, 2]
+
+     # Smooth edges using a Gaussian blur
+    mask = expanded_mask[..., 0]
+    blurred_mask = cv2.GaussianBlur(mask.astype(np.float32), (15, 15), 10)
+
+    for c in range(channels):
+        corrected_img[..., c] = (corrected_img[..., c] * blurred_mask / 255.0 +
+                                 original_img[..., c] * (1 - blurred_mask / 255.0)).astype(np.uint8)
+
+
+    return corrected_img
+
+
+def remove_shadow_callback():
+    global filepath
+
     if not filepath:
         messagebox.showerror("Error", "No file selected")
         return
 
-    if shadow_removal_model is None:
-        if messagebox.askyesno("Train Model", "The shadow removal model is not trained yet. Do you want to train it now?"):
-            shadow_removal_model = train_shadow_removal_model()
-        else:
-            return
+    # Generate a shadow mask directly using Otsu's thresholding (as no model is used)
+    original_img = cv2.imread(filepath)
+    thresholded_mask_resized = cv2.imread('shadow_thresholded_image.jpg')
 
-    shadow_free_img = remove_shadows(filepath, shadow_removal_model)
-    shadow_free_img = cv2.cvtColor(shadow_free_img, cv2.COLOR_BGR2RGB)
+    gray_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2GRAY)
 
-    # Display shadow-free image
-    shadow_free_img = Image.fromarray(shadow_free_img)
-    shadow_free_img = ImageTk.PhotoImage(shadow_free_img)
+    # Apply Otsu's thresholding to generate a shadow mask
+    _, shadow_mask = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    panel.configure(image=shadow_free_img)
-    panel.image = shadow_free_img
-    messagebox.showinfo("Info", "Shadow removal completed. Processed image saved as 'shadow_removed_image.jpg'.")
+    # Apply the shadow removal function
+    shadow_removed_img = remove_shadow(filepath, thresholded_mask_resized)
 
+    # Save and display the shadow-removed image
+    output_path = "shadow_removed_image.jpg"
+    cv2.imwrite(output_path, shadow_removed_img)
+    shadow_removed_img = cv2.cvtColor(shadow_removed_img, cv2.COLOR_BGR2RGB)
+    shadow_removed_img = Image.fromarray(shadow_removed_img)
+    shadow_removed_img = ImageTk.PhotoImage(shadow_removed_img)
+
+    panel.configure(image=shadow_removed_img)
+    panel.image = shadow_removed_img
+    messagebox.showinfo("Info", f"Shadow removal completed. Image saved as '{output_path}'.")
+
+
+    
 
 def detect_and_highlight_shadow(image_path, model, target_size=(128, 128)):
     original_img = cv2.imread(image_path)
@@ -209,7 +208,7 @@ def detect_and_highlight_shadow(image_path, model, target_size=(128, 128)):
     shadow_colored[thresholded_mask_resized == 255] = [0, 0, 255]  # Red color for shadows
 
     # Save both images
-    cv2.imwrite("shadow_thresholded_image.jpg", closed_mask)
+    cv2.imwrite("shadow_thresholded_image.jpg", thresholded_mask_resized)
     cv2.imwrite("highlighted_shadow_image.jpg", shadow_colored)
 
     return shadow_colored, thresholded_mask_resized
@@ -276,11 +275,11 @@ btn_select.grid(row=0, column=0, padx=10)
 btn_detect = tk.Button(frame, text="Detect Shadow", command=detect_shadow)
 btn_detect.grid(row=0, column=1, padx=10)
 
-btn_remove = tk.Button(frame, text="Remove Shadow", command=remove_shadow)
+btn_remove = tk.Button(frame, text="Remove Shadow", command=remove_shadow_callback)
 btn_remove.grid(row=0, column=2, padx=10)
 
 panel = tk.Label(app)
 panel.pack(pady=10)
 
 app.mainloop()
-#train_model() 
+#train_model()
