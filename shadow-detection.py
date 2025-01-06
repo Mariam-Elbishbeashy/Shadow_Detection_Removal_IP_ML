@@ -25,7 +25,7 @@ def extract_features(image):
     # Local Binary Pattern (LBP)
     lbp = local_binary_pattern(gray, P=8, R=1, method='uniform').flatten()
 
-    rgb_flat = image.reshape(-1, 3)  # RGB values
+    #rgb_flat = image.reshape(-1, 3)  # RGB values
     gray_flat = gray.flatten()  # Grayscale intensity
 
     # Combine RGB, Grayscale, and LBP features
@@ -151,13 +151,13 @@ def remove_shadow_callback():
         return
 
     # Generate a shadow mask directly using Otsu's thresholding (as no model is used)
-    original_img = cv2.imread(filepath)
+    #original_img = cv2.imread(filepath)
     thresholded_mask_resized = cv2.imread('shadow_thresholded_image.jpg')
 
-    gray_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2GRAY)
+    #gray_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2GRAY)
 
     # Apply Otsu's thresholding to generate a shadow mask
-    _, shadow_mask = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    #_, shadow_mask = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     # Apply the shadow removal function
     shadow_removed_img = remove_shadow(filepath, thresholded_mask_resized)
