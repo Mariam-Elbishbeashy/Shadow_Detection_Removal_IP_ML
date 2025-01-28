@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shadow Detection and Removal</title>
+</head>
+<body>
+    <h1>Shadow Detection and Removal</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <button type="submit">Upload Image</button>
+    </form>
+
+    {% if original_image %}
+        <h2>Uploaded Image</h2>
+        <img src="{{ url_for('static', filename='original_image.jpg') }}" alt="Original Image" width="300">
+        <br>
+        {% if not processed_image %}
+            <a href="{{ url_for('detect_shadow', filename=original_image) }}">
+                <button type="button">Detect Shadow</button>
+            </a>
+        {% endif %}
+    {% endif %}
+
+    {% if processed_image %}
+        <h2>Processed Image</h2>
+        <img src="{{ url_for('static', filename=processed_image) }}" alt="Processed Image" width="300">
+        <br>
+        <a href="{{ url_for('remove_shadow', filename=processed_image) }}">
+            <button type="button">Remove Shadow</button>
+        </a>
+    {% endif %}
+</body>
+</html>
