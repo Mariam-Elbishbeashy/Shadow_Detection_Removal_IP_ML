@@ -30,6 +30,12 @@
         <a href="{{ url_for('remove_shadow', filename=processed_image) }}">
             <button type="button">Remove Shadow</button>
         </a>
+        
+        {% if processed_image.startswith('removed_') %}
+            <a href="{{ url_for('download_image', filename=processed_image) }}" download>
+                <button type="button">Download Processed Image</button>
+            </a>
+        {% endif %}
     {% endif %}
 </body>
 </html>

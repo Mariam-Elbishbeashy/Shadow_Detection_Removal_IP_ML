@@ -161,6 +161,13 @@ def remove_shadow(filename):
     # Render the template with the shadow-removed image
     return render_template('index.html', original_image='original_image.jpg', processed_image=static_removed_image_filename)
 
+@app.route('/download/<filename>')
+def download_image(filename):
+    # Ensure the filename is safe and points to the correct folder
+    if filename.startswith('removed_'):
+        return send_from_directory(app.config['REMOVED_FOLDER'], filename, as_attachment=True)
+    else:
+        return "File not found.", 404
 
 def detect_and_highlight_shadow(image_path, model, target_size=(128, 128)):
 
