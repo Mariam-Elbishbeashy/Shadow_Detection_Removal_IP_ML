@@ -8,7 +8,8 @@ This repository provides a Python-based application for detecting and removing s
 
 - **Shadow Detection:** Highlights shadows in the input image using a trained Random Forest classifier.
 - **Shadow Removal:** Removes detected shadows and corrects the image for better visual quality.
-- **GUI:** A user-friendly interface to load images, detect shadows, and remove shadows.
+- **GUI Application:** A user-friendly interface to load images, detect shadows, and remove shadows.
+- **Web Application:** A Flask-based interactive website that allows users to upload images and process them online.
 
 ---
 
@@ -25,6 +26,7 @@ To run this project, you'll need the following:
   - `Pillow`
   - `joblib`
   - `tkinter` (comes pre-installed with Python)
+  - `Flask` (for the web application)
 
 ---
 
@@ -79,16 +81,40 @@ If you want to retrain the shadow detection model, follow these steps:
 
 ### File Structure
 ```bash
-├── shadow-detection.py          # Main script with GUI and processing logic
-├── ISTD_Dataset/                # Folder for the training dataset (ignored by git)
-├── highlighted_shadow_image.jpg # Example output: shadow detection
-├── processed_shadow_image.jpg   # Example output: processed image
-├── shadow_removed_image.jpg     # Example output: shadow removed
-├── shadow_thresholded_image.jpg # Example output: shadow mask
-├── shadow_detection_model.pkl   # Trained Random Forest model (ignored by Git)
-├── .gitignore                   # Git ignore rules
-├── README.md                    # Project documentation
+├── app.py                          # Flask web application script  
+├── shadow-detection.py             # GUI application script  
+├── templates/                      # HTML files for the web app  
+│   ├── index.html                  # Main webpage  
+├── static/                         # Stores processed images  
+│   ├── original_image.jpg  
+│   ├── processed_shadow_image.jpg  
+│   ├── removed_shadow_image.jpg  
+├── uploads/                        # Stores uploaded images  
+├── detected_images/                # Stores shadow-detected images  
+├── removed_shadows/                # Stores shadow-removed images  
+├── ISTD_Dataset/                   # Training dataset (if used)  
+├── shadow_detection_model.pkl      # Trained model  
+├── requirements.txt                # List of dependencies  
+├── README.md                       # Documentation  
+
 ```
+---
+## Running the web Application
+To use the Flask-based web application, follow these steps:
+1. If you want to train the model from scratch, make sure you have the ISTD dataset placed in the root directory.
+
+2. Run the Flask application:
+
+ ```bash
+  python app.py
+```
+3. Open a browser and navigate to:
+
+ ```bash
+  http://127.0.0.1:5000/
+```
+4. Upload an image and use the interface to detect and remove shadows.
+
 ---
 
 ## Dataset:
