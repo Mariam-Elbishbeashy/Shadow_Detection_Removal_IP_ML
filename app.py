@@ -101,7 +101,8 @@ def upload_file():
         file.seek(0) 
         file.save(static_path)
 
-        return redirect(url_for('detect_shadow', filename=file.filename))
+        return render_template('index.html', original_image=file.filename)
+
 
 @app.route('/detect_shadow/<filename>')
 def detect_shadow(filename):
