@@ -4,38 +4,102 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shadow Detection and Removal</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/shadow-detection-removal.css') }}">
 </head>
 <body>
-    <h1>Shadow Detection and Removal</h1>
-    <form action="/upload" method="post" enctype="multipart/form-data">
-        <input type="file" name="file" accept="image/*" required>
-        <button type="submit">Upload Image</button>
-    </form>
+    <div class="container">
+        <header>
+            <h1>Shadow Detection and Removal</h1>
+            <p>Upload an image to detect and remove shadows.</p>
+        </header>
 
-    {% if original_image %}
-        <h2>Uploaded Image</h2>
-        <img src="{{ url_for('static', filename='original_image.jpg') }}" alt="Original Image" width="300">
-        <br>
-        {% if not processed_image %}
-            <a href="{{ url_for('detect_shadow', filename=original_image) }}">
-                <button type="button">Detect Shadow</button>
-            </a>
-        {% endif %}
-    {% endif %}
+        <!-- Drag and Drop File Upload Section -->
+        <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data" class="upload-form">
+            <div class="drag-drop-area" id="dragDropArea">
+                <span class="drag-drop-text">Drag & Drop an Image Here</span>
+                <span class="drag-drop-or">or</span>
+                <label for="fileInput" class="custom-file-upload">
+                    Choose File
+                </label>
+                <input type="file" id="fileInput" name="file" accept="image/*" required>
+            </div>
+        </form>
 
-    {% if processed_image %}
-        <h2>Processed Image</h2>
-        <img src="{{ url_for('static', filename=processed_image) }}" alt="Processed Image" width="300">
-        <br>
-        <a href="{{ url_for('remove_shadow', filename=processed_image) }}">
-            <button type="button">Remove Shadow</button>
-        </a>
-        
-        {% if processed_image.startswith('removed_') %}
-            <a href="{{ url_for('download_image', filename=processed_image) }}" download>
-                <button type="button">Download Processed Image</button>
-            </a>
-        {% endif %}
-    {% endif %}
+        <!-- Image Display Section -->
+        <div class="image-display">
+            {% if original_image %}
+                <div class="image-container">
+                    <h2>Original Image</h2>
+                    <img src="{{ url_for('static', filename='original_image.jpg') }}" alt="Original Image" class="uploaded-image">
+                    <br>
+                    <!-- Detect Shadow Button -->
+                    {% if not processed_image %}
+                        <a href="{{ url_for('detect_shadow', filename=original_image) }}">
+                            <button type="button" class="action-button">Detect Shadow</button>
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+
+            {% if processed_image %}
+                <div class="image-container">
+                    <h2>Processed Image</h2>
+                    <img src="{{ url_for('static', filename=processed_image) }}" alt="Processed Image" class="processed-image">
+                    <br>
+                    <!-- Remove Shadow Button -->
+                    <a href="{{ url_for('remove_shadow', filename=processed_image) }}">
+                        <button type="button" class="action-button">Remove Shadow</button>
+                    </a>
+                    
+                    <!-- Download Button -->
+                    {% if processed_image.startswith('removed_') %}
+                        <a href="{{ url_for('download_image', filename=processed_image) }}" download>
+                            <button type="button" class="action-button">Download Processed Image</button>
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        const dragDropArea = document.getElementById('dragDropArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadForm = document.getElementById('uploadForm');
+
+        // Highlight the drag-drop area when a file is dragged over
+        dragDropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.add('drag-over');
+        });
+
+        // Remove the highlight when the file is dragged out
+        dragDropArea.addEventListener('dragleave', () => {
+            dragDropArea.classList.remove('drag-over');
+        });
+
+        // Handle the file drop
+        dragDropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragDropArea.classList.remove('drag-over');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files; // Assign the dropped file to the file input
+                uploadForm.submit(); 
+            }
+        });
+
+        fileInput.addEventListener('change', () => {
+            uploadForm.submit();
+        });
+
+        // Hide the drag-drop area after the image is uploaded
+        window.onload = () => {
+            if ("{{ original_image }}" !== "") {
+                dragDropArea.style.display = "none";
+            }
+        };
+    </script>
 </body>
 </html>
